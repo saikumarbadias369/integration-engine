@@ -8,12 +8,13 @@ exports.handlewebhook = async (req, res) => {
             type,
             payload: data
         })
+        console.log(event)
         res.status(200).send("Webhook receivd")
     } catch (err) {
-        if (err === 11000) {
+        if (err.code === 11000) {
             return res.status(200).send("Event already processed")
         }
         res.status(500).send("webhook error")
     }
 
-}
+};
