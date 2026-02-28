@@ -6,7 +6,7 @@ exports.handlewebhook = async (req, res) => {
     try {
         const event = await eventService.createEvent(id, type, data)
         res.status(200).send("webhook received")
-        eventService.processEvent(event)
+       
     } catch (error) {
         if (error.code === 11000) {
             return res.status(200).send("Event already processed")
