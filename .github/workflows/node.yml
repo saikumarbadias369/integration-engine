@@ -1,0 +1,25 @@
+name: Node CI Pipeline
+
+on:
+   push:
+     branches:
+        -main
+
+jobs:
+   build:
+     runs-on: ubunt-latest
+
+     steps:
+       -name: Checkout Repository
+        uses: actions/checkout@v3
+
+       -name: Setup Node 
+        uses: actions/setup-node@v3
+        with:
+         node-version:18
+
+      -name: Install Dependencies
+       run : npm Install
+      -name: Run Basic Checkout
+       run: node -v
+
