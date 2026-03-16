@@ -25,7 +25,7 @@ router.get("/callback", async (req, res) => {
             code,
             client_id: "test123"
         });
-        console.log('response>>Data> '+response.data)
+        console.log('response>>Data> ' + response.data)
 
         await tokenService.saveToken("hubspot", response.data);
 

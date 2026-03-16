@@ -1,9 +1,10 @@
 const { default: axios } = require("axios")
 const Event = require("../models/event.model")
 const tokenservice = require("../services/token.service")
+const crmClient = require("./crm.client")
 
 exports.createEvent = async (id, type, data) => {
-
+    console.log("in Create Event>" + id)
     return await Event.create({
         eventId: id,
         type,
@@ -18,50 +19,13 @@ exports.updateStatus = async (eventId, status) => {
 
 exports.processEvent = async (event) => {
     try {
-        console.log("Processing Event in processEvent()", event.eventId)
-        const token = await tokenservice.getValidAccessToken("hubspot")
-        // if (Math.random() < 0.5) {
-        //     throw new Error("Random failure")
-        // }
-        console.log("token>>" + token)
-        await axios.get("http://localhost:5001/contact", {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        })
-        console.log("updateStatus processEvent()", event.eventId)
-
+       await crmClient.getContact()
         const processedEvent = await exports.updateStatus(event.eventId, "processed")
         console.log("processed", processedEvent)
     } catch (err) {
 
-        if (err.response?.status === 401) {
-            console.log("401 detechetd. refreshing token..")
 
-            const newtoken = await tokenservice.refreshAccessToken("hubspot")
-
-            try {
-                await axios.get("http://localhost:5001/contact", {
-                    headers: {
-                        Authorization: `Bearer ${newtoken}`
-                    }
-                })
-            } catch (e) {
-                console.log("with New token>> " + e.message)
-
-            }
-
-
-
-            const processedEvent = await exports.updateStatus(event.eventId, "processed")
-            console.log("processed", processedEvent)
-            return
-
-
-        }
-
-
-        const newRetrycount = event.retryCount = 1
+        const newRetrycount = event.retryCount + 1
         if (newRetrycount >= 3) {
 
             await Event.findOneAndUpdate({ eventId: event.eventId }, { status: "dead", $inc: { retryCount: 1 }, lastError: err.message })
@@ -80,7 +44,7 @@ exports.processEvent = async (event) => {
 
 
 exports.retryFailedEvents = async () => {
-    const failedEvents = Event.find({ status: "failed", retryCount: { $lt: 3 } })
+    const failedEvents = await Event.find({ status: "failed", retryCount: { $lt: 3 } })
     for (const event of failedEvents) {
         console.log("Processing", event.eventId)
         await exports.processEvent(event)
@@ -120,6 +84,7 @@ exports.workerloop = async () => {
         const lockedEvents = []
 
         for (const event of events) {
+            console.log("worker process Started for type pending " + event.eventId)
             const lockEvent = await Event.findOneAndUpdate({ eventId: event.eventId, status: "pending" }, { status: "processing" }, { new: true })
             if (lockEvent) {
                 lockedEvents.push(lockEvent)

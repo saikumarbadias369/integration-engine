@@ -2,6 +2,7 @@ const { now } = require("mongoose")
 const Token = require("../models/token.model")
 const { default: axios } = require("axios")
 
+
 exports.saveToken = async (provider, tokenData) => {
     const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000)
     console.log("savetokenData> " + tokenData.access_token)
@@ -39,7 +40,7 @@ exports.refreshAccessToken = async (provider, refreshToken) => {
         const tokenData = response.data
         console.log("tokenData> "+tokenData)
         await exports.saveToken(provider, tokenData)
-        return tokenData.accessToken
+        return tokenData.access_token
     } catch (error) {
         console.log(error.message)
         throw new Error("Refresh token expired. Re-authorization required.")

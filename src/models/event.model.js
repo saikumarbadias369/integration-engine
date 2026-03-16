@@ -10,7 +10,7 @@ const eventSchema = new mongoose.Schema({
     payload: Object,
     status: {
         type: String,
-        enum: ["pending", "processing", "processed", "failed","dead"],
+        enum: ["pending", "processing", "processed", "failed", "dead"],
         default: "pending"
     },
     retryCount: {
@@ -18,7 +18,10 @@ const eventSchema = new mongoose.Schema({
         default: 0
     },
     lastError: String,
-    nextRetryAt:Date
+    nextRetryAt: Date
 }, { timestamps: true })
+
+eventSchema.index({ status: 1 })
+eventSchema.index({ nextRetryAt: 1 })
 
 module.exports = mongoose.model("Event", eventSchema)
