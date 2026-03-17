@@ -6,7 +6,7 @@ const tokenService = require("../services/token.service");
 
 
 router.get("/connect-crm", (req, res) => {
-    const authUrl = `http://localhost:5001/authorize?client_id=test123&redirect_uri=http://localhost:5004/oauth/callback`;
+    const authUrl = `https://crm-integration-engine.onrender.com/authorize?client_id=test123&redirect_uri=http://localhost:5004/oauth/callback`;
 
     res.redirect(authUrl);
 });
@@ -20,7 +20,7 @@ router.get("/callback", async (req, res) => {
     console.log(code)
 
     try {
-        const response = await axios.post("http://localhost:5001/token", {
+        const response = await axios.post("https://crm-integration-engine.onrender.com/token", {
             grant_type: "authorization_code",
             code,
             client_id: "test123"
