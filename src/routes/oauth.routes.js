@@ -6,7 +6,7 @@ const tokenService = require("../services/token.service");
 
 
 router.get("/connect-crm", (req, res) => {
-    const authUrl = `https://crm-integration-engine.onrender.com/authorize?client_id=test123&redirect_uri=http://localhost:5004/oauth/callback`;
+    const authUrl = `https://crm-integration-engine.onrender.com/authorize?client_id=test123&redirect_uri=https://integration-engine-g6wv.onrender.com/oauth/callback`;
 
     res.redirect(authUrl);
 });
