@@ -6,6 +6,13 @@ const oauthRoutes = require("./src/routes/oauth.routes");
 
 const app = express()
 app.use(express.json());
+app.use((err,req,res,next)=>{
+    if(err instanceof SyntaxError){
+        console.log("Invalid JSIN received")
+        return res.status(400).send("Invalid JSON")
+    }
+    next()
+})
 
 
 
