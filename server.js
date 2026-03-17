@@ -19,8 +19,9 @@ app.get("/", (req, res) => {
     res.json({ message: "engine Running" })
 })
 
+const PORT=process.env.PORT || 5004
 
-app.listen(5004, () => {
+app.listen(PORT, () => {
     console.log("Server Running on " + 5004)
 })
 
