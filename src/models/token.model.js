@@ -9,7 +9,7 @@ const tokenSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    refreshTokne: {
+    refreshToken: {
         type: String,
         required: true
     },

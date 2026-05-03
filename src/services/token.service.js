@@ -1,4 +1,3 @@
-const { now } = require("mongoose")
 const Token = require("../models/token.model")
 const { default: axios } = require("axios")
 
@@ -11,7 +10,7 @@ exports.saveToken = async (provider, tokenData) => {
     await Token.findOneAndUpdate({ provider }, {
         accessToken: tokenData.access_token,
         expiresAt,
-        ...(tokenData.refresh_token && { refreshTokne: tokenData.refresh_token })
+        ...(tokenData.refresh_token && { refreshToken: tokenData.refresh_token })
 
     }, { upsert: true, new: true })
 }
@@ -26,7 +25,7 @@ exports.getValidAccessToken = async (provider) => {
 
     if (Date.now() >= token.expiresAt.getTime()) {
         console.log("access token expired. Refreshing..")
-        return await exports.refreshAccessToken(provider, token.refreshTokne)
+        return await exports.refreshAccessToken(provider, token.refreshToken)
     }
 
     return token.accessToken
@@ -36,7 +35,7 @@ exports.getValidAccessToken = async (provider) => {
 exports.refreshAccessToken = async (provider, refreshToken) => {
 
     try {
-        const response = await axios.post("http://localhost:5001/token", { grant_type: "refresh_token", refresh_token: refreshToken })
+        const response = await axios.post("https://crm-integration-engine.onrender.com/token", { grant_type: "refresh_token", refresh_token: refreshToken })
         const tokenData = response.data
         console.log("tokenData> "+tokenData)
         await exports.saveToken(provider, tokenData)
