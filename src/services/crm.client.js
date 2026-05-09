@@ -2,7 +2,7 @@ const axios = require("axios")
 const tokenservice = require("./token.service")
 const limiter = require("../utils/ratelimiter")
 
-const BASE_URL = "http://localhost:5001"
+const BASE_URL = "https://crm-integration-engine.onrender.com"
 
 
 exports.getContact = async () => {
@@ -20,8 +20,10 @@ exports.getContact = async () => {
                     Authorization: `Bearer ${token}`
                 }
             })
+            console.log("in Get contact> "+response.data)
             return response.data
 
+            
         })
 
 
@@ -29,20 +31,17 @@ exports.getContact = async () => {
     } catch (err) {
         console.log("401 detechetd. refreshing token..")
         if (err.response?.status === 401) {
-            const newtoken = await tokenservice.refreshAccessToken("hubspot")
+            const newToken = await tokenservice.refreshAccessToken("hubspot")
 
-            try {
-                await axios.get(`${BASE_URL}/contact`, {
-                    headers: {
-                        Authorization: `Bearer ${newtoken}`
-                    }
-                })
-            } catch (e) {
-                console.log("with New token>> " + e.message)
+            
 
-            }
+                  const retryResponse = await axios.get(`${BASE_URL}/contact`, {
+          headers: { Authorization: `Bearer ${newToken}` }
+        })
 
-            return response.data
+           
+
+            return retryResponse.data
         }
 
         throw err
