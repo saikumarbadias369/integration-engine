@@ -1,4 +1,5 @@
 require("dotenv").config()
+require("./src/config") 
 const eventService = require("./src/services/event.service")
 const mongoose = require("mongoose")
 

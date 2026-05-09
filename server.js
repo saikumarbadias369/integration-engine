@@ -1,4 +1,5 @@
 require("dotenv").config()
+require("./src/config") 
 const express = require("express")
 const mongoose = require("mongoose")
 const webhookRoutes = require("./src/routes/webhook.routes")
