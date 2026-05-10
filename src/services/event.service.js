@@ -19,7 +19,7 @@ exports.updateStatus = async (eventId, status) => {
 
 exports.processEvent = async (event) => {
     try {
-       await crmClient.getContact()
+       await  crmClient.processContact(event.payload)
         const processedEvent = await exports.updateStatus(event.eventId, "processed")
         console.log("processed", processedEvent)
     } catch (err) {

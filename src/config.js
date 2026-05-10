@@ -1,6 +1,9 @@
 const required = [
   "MONGO_URL",
-  "PORT"
+  "PORT",
+  "HUBSPOT_CLIENT_ID",
+  "HUBSPOT_CLIENT_SECRET",
+  "HUBSPOT_REDIRECT_URI"
 ]
 
 const missing = required.filter(key => !process.env[key])
