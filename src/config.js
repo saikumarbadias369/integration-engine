@@ -3,7 +3,8 @@ const required = [
   "PORT",
   "HUBSPOT_CLIENT_ID",
   "HUBSPOT_CLIENT_SECRET",
-  "HUBSPOT_REDIRECT_URI"
+  "HUBSPOT_REDIRECT_URI",
+  "SLACK_WEBHOOK_URL"
 ]
 
 const missing = required.filter(key => !process.env[key])

@@ -1,4 +1,5 @@
 const { default: axios } = require("axios")
+const { sendSlackAlert } = require("../utils/slack")
 const Event = require("../models/event.model")
 const tokenservice = require("../services/token.service")
 const crmClient = require("./crm.client")
@@ -19,7 +20,7 @@ exports.updateStatus = async (eventId, status) => {
 
 exports.processEvent = async (event) => {
     try {
-       await  crmClient.processContact(event.payload)
+        await crmClient.processContact(event.payload)
         const processedEvent = await exports.updateStatus(event.eventId, "processed")
         console.log("processed", processedEvent)
     } catch (err) {
@@ -28,8 +29,31 @@ exports.processEvent = async (event) => {
         const newRetrycount = event.retryCount + 1
         if (newRetrycount >= 3) {
 
-            await Event.findOneAndUpdate({ eventId: event.eventId }, { status: "dead", $inc: { retryCount: 1 }, lastError: err.message })
-            console.error("ALERT Mail Sent: DEAD EVENT", event.eventId)
+            if (newRetrycount >= 3) {
+
+                await Event.findOneAndUpdate(
+                    { eventId: event.eventId },
+                    { status: "dead", $inc: { retryCount: 1 }, lastError: err.message }
+                )
+
+
+                await sendSlackAlert(
+                    `🚨 *DEAD EVENT ALERT*\n` +
+                    `*Event ID:* ${event.eventId}\n` +
+                    `*Type:* ${event.type}\n` +
+                    `*Error:* ${err.message}\n` +
+                    `*Retries:* ${newRetrycount}\n` +
+                    `*Time:* ${new Date().toISOString()}`
+                )
+
+                console.log(JSON.stringify({
+                    timestamp: new Date().toISOString(),
+                    event: "Event marked dead, Slack alert sent",
+                    eventId: event.eventId
+                }))
+            }
+
+
         } else {
             const delay = Math.pow(2, event.retryCount) * 60 * 1000
             await Event.findOneAndUpdate({ eventId: event.eventId }, { status: "failed", $inc: { retryCount: 1 }, lastError: err.message, nextRetryAt: new Date(Date.now() + delay) })
