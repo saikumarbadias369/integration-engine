@@ -1,85 +1,153 @@
-# Integration Engine Project
+# Integration Engine
 
-## Overview
-This project is a backend integration system built using Node.js that processes webhook events and integrates with external CRM APIs.
+A backend system that receives webhook events, processes them asynchronously, and creates contacts in HubSpot CRM. Built to understand how production integration systems handle failures, retries, and third-party API communication.
 
-The system follows an event-driven architecture where incoming requests are stored and processed asynchronously to ensure reliability and scalability.
+**Live:** https://integration-engine-g6wv.onrender.com/health
 
 ---
 
-## Key Features
-- Webhook ingestion system
-- Event storage using MongoDB
-- Background worker for asynchronous processing
-- Retry mechanism with exponential backoff
-- OAuth token handling with refresh logic
-- Rate limiting for external API calls
-- CI pipeline using GitHub Actions
+## What it does
+
+When a webhook event comes in, the server stores it immediately and responds — no waiting. A separate worker picks it up, calls the HubSpot API, and marks it done. If it fails, it retries with exponential backoff. If it keeps failing, it marks the event dead and fires a Slack alert.
+
+```
+Client → POST /webhook → Express server → MongoDB (pending)
+                                              ↓
+                                    Worker polls every 5s
+                                              ↓
+                                    HubSpot CRM API
+                                              ↓
+                                    status: processed
+                                    (or failed → retry → dead → Slack alert)
+```
 
 ---
 
 ## Architecture
-Webhook → API Server → MongoDB (Event Store) → Worker → CRM API
+
+Two separate services running on Render:
+
+**Web service** — handles incoming requests, validates payload, stores event, responds immediately
+
+**Worker service** — runs independently, polls MongoDB for pending events, processes them, calls HubSpot
+
+Keeping them separate means if the worker crashes, the API is still up and taking requests.
 
 ---
 
-## System Flow
+## Key features
 
-1. Webhook request is received by the API server
-2. Event is stored in MongoDB with "pending" status
-3. Server responds immediately to avoid timeout
-4. Worker continuously polls pending events
-5. Worker processes events and calls CRM API
-6. On success → event marked as "processed"
-7. On failure → retry logic is applied
-8. After max retries → event marked as "dead"
+**Idempotency** — each event has a unique ID. If the same webhook arrives twice, the second one is silently ignored. No duplicate contacts in HubSpot.
 
----
+**Retry with exponential backoff** — failed events retry at 1min, 2min, 4min delays. Tracked in the database so retries survive worker restarts.
 
-## Retry Strategy
+**Dead letter** — after 3 failed retries, event is marked `dead` and isolated. One bad event never blocks the queue.
 
-- Failed events are retried automatically
-- Exponential backoff is used to delay retries
-- Retry count is tracked in the database
-- Events exceeding retry limit are marked as "dead"
+**Token refresh** — HubSpot OAuth tokens expire. The system detects 401s and refreshes automatically without interrupting the flow.
+
+**Rate limiting** — outbound HubSpot API calls are spaced 200ms apart using Bottleneck. Prevents hitting API quotas under load.
+
+**Slack alerts** — when an event goes dead, a message fires to the team Slack channel immediately.
+
+**Health checks** — both services expose `/health` endpoints that check DB connectivity. Returns 503 if database is down so Render can auto-restart.
+
+**Structured logging** — every request and event logged as JSON with timestamp, so logs can be parsed and searched in production.
 
 ---
 
-## OAuth Handling
+## Event status flow
 
-- Access tokens are used for CRM API calls
-- If token expires (401 error), refresh token is used
-- New access token is generated without interrupting flow
+```
+pending → processing → processed
+              ↓
+           failed → (retry) → dead → Slack alert
+```
 
 ---
 
-## Tech Stack
+## Tech stack
 
-- Node.js
-- Express
-- MongoDB
+- Node.js + Express
+- MongoDB Atlas
 - Axios
-- JWT
-- GitHub Actions (CI)
+- Bottleneck (rate limiting)
+- HubSpot CRM API (OAuth 2.0)
+- Slack Incoming Webhooks
+- Render (deployment)
 
 ---
 
-## How to Run
+## How to run locally
 
-### Install Dependencies
+```bash
+# Install dependencies
 npm install
 
-### Start Server
-npm run start
+# Copy env file and fill in values
+cp .env.example .env
 
-### Start Worker
-npm run worker
+# Terminal 1 — start server
+npm run dev
+
+# Terminal 2 — start worker
+node worker.js
+```
+
+### Connect HubSpot
+
+```
+GET http://localhost:5004/oauth/hubspot
+```
+
+Opens HubSpot OAuth flow. Approve once — tokens are saved to MongoDB and refresh automatically.
+
+### Send a test webhook
+
+```bash
+curl -X POST http://localhost:5004/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"id":"test-001","type":"contact.created","data":{"email":"test@example.com","firstname":"Test","lastname":"User"}}'
+```
+
+Check HubSpot contacts — contact should appear within 10 seconds.
 
 ---
 
-## Notes
+## Environment variables
 
-- Server handles incoming webhook requests
-- Worker processes events asynchronously
-- System is designed to handle failures and retries
-- Suitable for real-world integration use cases
+See `.env.example` for all required variables.
+
+```
+MONGO_URL
+HUBSPOT_CLIENT_ID
+HUBSPOT_CLIENT_SECRET
+HUBSPOT_REDIRECT_URI
+SLACK_WEBHOOK_URL
+PORT
+```
+
+---
+
+## Project structure
+
+```
+├── server.js              # Express server, routes, middleware
+├── worker.js              # Background worker with health endpoint
+└── src/
+    ├── controllers/
+    │   └── webhook.controller.js   # Input validation, event creation
+    ├── routes/
+    │   ├── webhook.routes.js
+    │   └── oauth.routes.js         # HubSpot OAuth flow
+    ├── services/
+    │   ├── event.service.js        # Worker loop, retry logic, batch processing
+    │   ├── hubspot.service.js      # HubSpot OAuth + contacts API
+    │   ├── token.service.js        # Token storage and refresh
+    │   └── crm.client.js           # Rate-limited CRM calls
+    ├── models/
+    │   ├── event.model.js
+    │   └── token.model.js
+    └── utils/
+        ├── ratelimiter.js          # Bottleneck config
+        └── slack.js                # Slack alert utility
+```
