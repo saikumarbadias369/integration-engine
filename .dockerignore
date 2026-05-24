@@ -1,0 +1,4 @@
+node_modules     ← Don't copy this — it's huge (100MB+) and Docker installs fresh
+.env             ← NEVER copy this — contains your passwords and API keys
+.git             ← Git history not needed in container — wastes space
+*.md             ← README files not needed to run the app

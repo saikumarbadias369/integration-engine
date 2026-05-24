@@ -33,7 +33,7 @@ app.use((err, req, res, next) => {
   next()
 })
 
-// Checks DB connection — returns 503 if unhealthy so Railway auto-restarts
+// Checks DB connection — returns 503 if unhealthy so Railway/Render auto-restarts
 app.get("/health", (req, res) => {
   const dbStatus = mongoose.connection.readyState === 1 ? "connected" : "disconnected"
   res.status(dbStatus === "connected" ? 200 : 503).json({

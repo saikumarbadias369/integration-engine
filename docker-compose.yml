@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+
+  mongodb:
+    image: mongo:6.0
+    container_name: integration-engine-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+   
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s      
+      timeout: 5s        
+      retries: 5       
+
+  server:
+    build: .
+    container_name: integration-engine-server
+    restart: unless-stopped
+    ports:
+      - "5004:5004"
+    env_file:
+      - .env
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017/integration-engine
+      - PORT=5004
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+    depends_on:
+      mongodb:
+        condition: service_healthy  
+
+  worker:
+    build: .
+    container_name: integration-engine-worker
+    restart: unless-stopped
+    command: node worker.js
+    env_file:
+      - .env
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017/integration-engine
+      - WORKER_PORT=5005
+    ports:
+      - "5005:5005"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    
+    depends_on:
+      mongodb:
+        condition: service_healthy   
+
+volumes:
+  mongodb_data:
