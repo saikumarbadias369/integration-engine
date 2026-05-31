@@ -1,9 +1,10 @@
 const eventService = require("../services/event.service")
+const queueService = require("../services/queue.service")
 
 exports.handlewebhook = async (req, res) => {
   const { id, type, data } = req.body
 
-  
+
   if (!id) {
     return res.status(400).json({
       success: false,
@@ -27,8 +28,9 @@ exports.handlewebhook = async (req, res) => {
 
   try {
     const event = await eventService.createEvent(id, type, data)
+    await queueService.addWebhookEvent(id, type, data)
 
-   
+
     return res.status(200).json({
       success: true,
       message: "Webhook received",
@@ -37,7 +39,7 @@ exports.handlewebhook = async (req, res) => {
 
   } catch (error) {
 
- 
+
     if (error.code === 11000) {
       return res.status(200).json({
         success: true,
