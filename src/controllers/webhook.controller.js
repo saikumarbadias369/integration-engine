@@ -1,55 +1,47 @@
+const Joi = require("joi")
 const eventService = require("../services/event.service")
 const queueService = require("../services/queue.service")
 
+
+const webhookSchema = Joi.object({
+  id: Joi.string().trim().required(),
+  type: Joi.string().trim().required(),
+  data: Joi.object().required()
+})
+
 exports.handlewebhook = async (req, res) => {
-  const { id, type, data } = req.body
 
+  const { error, value } = webhookSchema.validate(req.body)
 
-  if (!id) {
+  if (error) {
     return res.status(400).json({
       success: false,
-      error: "Missing required field: id"
+      error: error.details[0].message
     })
   }
 
-  if (!type) {
-    return res.status(400).json({
-      success: false,
-      error: "Missing required field: type"
-    })
-  }
-
-  if (!data || typeof data !== "object") {
-    return res.status(400).json({
-      success: false,
-      error: "Missing or invalid field: data must be an object"
-    })
-  }
+  const { id, type, data } = value
 
   try {
-    const event = await eventService.createEvent(id, type, data)
-    await queueService.addWebhookEvent(id, type, data)
-
-
-    return res.status(200).json({
-      success: true,
-      message: "Webhook received",
-      eventId: id
-    })
-
-  } catch (error) {
-
-
-    if (error.code === 11000) {
-      return res.status(200).json({
-        success: true,
-        message: "Event already received"
-      })
+    await eventService.createEvent(id, type, data)
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(200).json({ success: true, message: "Event already received" })
     }
-
-    return res.status(500).json({
-      success: false,
-      error: "Failed to process webhook"
-    })
+    return res.status(500).json({ success: false, error: "Failed to process webhook" })
   }
+
+  // Event is safely in MongoDB — respond immediately
+  // Queue failure should not block the webhook response
+  res.status(200).json({ success: true, message: "Webhook received", eventId: id })
+
+  // Push to queue after responding — non-blocking
+  queueService.addWebhookEvent(id, type, data).catch(err => {
+    console.error(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      event: "Failed to queue event",
+      eventId: id,
+      error: err.message
+    }))
+  })
 }
