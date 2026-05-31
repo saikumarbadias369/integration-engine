@@ -10,12 +10,27 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
-   
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s      
-      timeout: 5s        
-      retries: 5       
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # NEW — Redis service
+  redis:
+    image: redis:7-alpine
+    container_name: integration-engine-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   server:
     build: .
@@ -27,14 +42,16 @@ services:
       - .env
     environment:
       - MONGO_URL=mongodb://mongodb:27017/integration-engine
+      - REDIS_URL=redis://redis:6379
       - PORT=5004
     volumes:
       - .:/app
       - /app/node_modules
-
     depends_on:
       mongodb:
-        condition: service_healthy  
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   worker:
     build: .
@@ -45,16 +62,19 @@ services:
       - .env
     environment:
       - MONGO_URL=mongodb://mongodb:27017/integration-engine
+      - REDIS_URL=redis://redis:6379
       - WORKER_PORT=5005
     ports:
       - "5005:5005"
     volumes:
       - .:/app
       - /app/node_modules
-    
     depends_on:
       mongodb:
-        condition: service_healthy   
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   mongodb_data:
+  redis_data:
