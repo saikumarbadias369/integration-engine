@@ -1,5 +1,6 @@
 require("dotenv").config()
 const axios = require("axios")
+const logger = require("./logger")
 
 
 const sendSlackAlert = async (message) => {
@@ -9,18 +10,11 @@ const sendSlackAlert = async (message) => {
       text: message
     })
 
-    console.log(JSON.stringify({
-      timestamp: new Date().toISOString(),
-      event: "Slack alert sent"
-    }))
+    logger.info({event:"Slack alert sent"})
+   
 
   } catch (err) {
-  
-    console.error(JSON.stringify({
-      timestamp: new Date().toISOString(),
-      event: "Slack alert failed",
-      error: err.message
-    }))
+    logger.error({evnt:"Slack alert failed",error:err.message})
   }
 }
 
