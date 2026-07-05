@@ -2,7 +2,7 @@ const { default: axios } = require("axios")
 const { sendSlackAlert } = require("../utils/slack")
 const Event = require("../models/event.model")
 const tokenservice = require("../services/token.service")
-const crmClient = require("./crm.client")
+const connectorRegistry = require("../connectors")
 
 exports.createEvent = async (id, type, data) => {
     console.log("in Create Event>" + id)
@@ -19,35 +19,24 @@ exports.updateStatus = async (eventId, status) => {
 }
 
 exports.processEvent = async (event) => {
-  try {
-    // Call HubSpot CRM
-    await crmClient.processContact(event.payload)
-
-    // Update MongoDB status to processed
-    await exports.updateStatus(event.eventId, "processed")
-
-    console.log(JSON.stringify({
-      timestamp: new Date().toISOString(),
-      event: "Event processed successfully",
-      eventId: event.eventId
-    }))
-
-  } catch (err) {
-    console.error(JSON.stringify({
-      timestamp: new Date().toISOString(),
-      event: "Event processing failed",
-      eventId: event.eventId,
-      error: err.message
-    }))
-
-    // CRITICAL — throw error so BullMQ knows job failed
-    // BullMQ will then:
-    // - retry with exponential backoff automatically
-    // - send Slack alert after max attempts (handled in worker.js)
-    // - mark as failed after max attempts
-   
-    throw err
-  }
+    try {
+        const connector = connectorRegistry.getConnector(event.type)
+        await connector.processEvent(event.payload)
+        await exports.updateStatus(event.eventId, "processed")
+        console.log(JSON.stringify({
+            timestamp: new Date().toISOString(),
+            event: "Event processed successfully",
+            eventId: event.eventId
+        }))
+    } catch (err) {
+        console.error(JSON.stringify({
+            timestamp: new Date().toISOString(),
+            event: "Event processing failed",
+            eventId: event.eventId,
+            error: err.message
+        }))
+        throw err
+    }
 }
 
 
